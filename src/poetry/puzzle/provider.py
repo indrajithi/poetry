@@ -201,7 +201,8 @@ class Provider:
         if dependency.name != package.name:
             # For now, the dependency's name must match the actual package's name
             raise RuntimeError(
-                f"The dependency name for {dependency.name} does not match the actual"
+                f"The dependency name for {
+                    dependency.name} does not match the actual"
                 f" package's name: {package.name}"
             )
 
@@ -218,6 +219,8 @@ class Provider:
         """
         if not self._installed_packages:
             return []
+
+        logger.info("Welcome!")
 
         logger.debug(
             "Falling back to installed packages to discover metadata for <c2>%s</>",
@@ -258,7 +261,8 @@ class Provider:
 
         else:
             raise RuntimeError(
-                f"{dependency}: unknown direct dependency type {dependency.source_type}"
+                f"{dependency}: unknown direct dependency type {
+                    dependency.source_type}"
             )
 
         if dependency.is_vcs():
@@ -605,7 +609,8 @@ class Provider:
             deps = self._resolve_overlapping_markers(package, deps, active_extras)
 
             if len(deps) == 1:
-                self.debug(f"<debug>Merging requirements for {dep_name}</debug>")
+                self.debug(f"<debug>Merging requirements for {
+                           dep_name}</debug>")
                 dependencies.append(deps[0])
                 continue
 
@@ -624,14 +629,16 @@ class Provider:
             def fmt_warning(d: Dependency) -> str:
                 dependency_marker = d.marker if not d.marker.is_any() else "*"
                 return (
-                    f"<c1>{d.name}</c1> <fg=default>(<c2>{d.pretty_constraint}</c2>)</>"
+                    f"<c1>{
+                        d.name}</c1> <fg=default>(<c2>{d.pretty_constraint}</c2>)</>"
                     f" with markers <b>{dependency_marker}</b>"
                 )
 
             warnings = ", ".join(fmt_warning(d) for d in deps[:-1])
             warnings += f" and {fmt_warning(deps[-1])}"
             self.debug(
-                f"<warning>Different requirements found for {warnings}.</warning>"
+                f"<warning>Different requirements found for {
+                    warnings}.</warning>"
             )
 
             overrides = []
@@ -756,9 +763,8 @@ class Provider:
                     f" (<c2>{m.group(2)}</c2>)"
                 )
             else:
-                message = (
-                    f"<fg=blue>derived</>: <c1>{message.split('derived: ')[1]}</c1>"
-                )
+                message = f"<fg=blue>derived</>: <c1>{
+                        message.split('derived: ')[1]}</c1>"
         elif message.startswith("conflict:"):
             m = re.match(r"conflict: (.+?) depends on (.+?) \((.+?)\)", message)
             if m:
@@ -771,7 +777,8 @@ class Provider:
                     version = ""
 
                 message = (
-                    f"<fg=red;options=bold>conflict</>: <c1>{name}</c1>{version} "
+                    f"<fg=red;options=bold>conflict</>: <c1>{
+                        name}</c1>{version} "
                     f"depends on <c1>{m.group(2)}</c1> (<c2>{m.group(3)}</c2>)"
                 )
             else:
