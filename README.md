@@ -15,6 +15,8 @@ ensuring you have the right stack everywhere.
 Poetry replaces `setup.py`, `requirements.txt`, `setup.cfg`, `MANIFEST.in` and `Pipfile` with a simple `pyproject.toml`
 based project format.
 
+Small change!
+
 ```toml
 [tool.poetry]
 name = "my-package"
