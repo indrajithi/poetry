@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
 
 from dulwich.repo import Repo
+from tests.helpers import MOCK_DEFAULT_GIT_REVISION
 
+from poetry.packages.direct_origin import _get_package_from_git
 from poetry.vcs.git.backend import Git
 from poetry.vcs.git.backend import annotated_tag
 from poetry.vcs.git.backend import is_revision_sha
@@ -13,6 +16,25 @@ from poetry.vcs.git.backend import urlpathjoin
 
 
 VALID_SHA = "c5c7624ef64f34d9f50c3b7e8118f7f652fddbbd"
+
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
+
+
+@pytest.fixture(autouse=True)
+def git_mock(mocker: MockerFixture) -> None:
+    repo = MagicMock(spec=Repo)
+
+    repo.get_config.return_value.get.return_value = (
+        b"https://github.com/python-poetry/poetry.git"
+    )
+
+    repo.head.return_value = MOCK_DEFAULT_GIT_REVISION.encode("utf-8")
+
+    # Clear any cache in the Git module
+    _get_package_from_git.cache_clear()
+
+    return repo
 
 
 def test_invalid_revision_sha() -> None:
@@ -55,13 +77,25 @@ def test_annotated_tag(tag: str | bytes) -> None:
     assert tag == b"my-tag^{}"
 
 
-def test_get_remote_url() -> None:
-    repo = MagicMock(spec=Repo)
-    repo.get_config.return_value.get.return_value = (
-        b"https://github.com/python-poetry/poetry.git"
-    )
+def test_get_remote_url(git_mock) -> None:
+    repo = git_mock
 
     assert Git.get_remote_url(repo) == "https://github.com/python-poetry/poetry.git"
+
+
+def test_get_revision(git_mock) -> None:
+    repo = git_mock
+    assert Git.get_revision(repo) == MOCK_DEFAULT_GIT_REVISION
+
+
+def test_info(git_mock) -> None:
+    repo = git_mock
+    info = Git.info(repo)
+
+    assert info.origin == "https://github.com/python-poetry/poetry.git"
+    assert (
+        info.revision == MOCK_DEFAULT_GIT_REVISION
+    )  # revision already mocked in helper
 
 
 @pytest.mark.parametrize(
