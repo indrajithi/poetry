@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(autouse=True)
-def git_mock(mocker: MockerFixture) -> None:
+def git_mock(mocker: MockerFixture) -> Repo:
     repo = MagicMock(spec=Repo)
 
     repo.get_config.return_value.get.return_value = (
@@ -40,7 +40,7 @@ def git_mock(mocker: MockerFixture) -> None:
 
 
 @pytest.fixture()
-def fetch_pack_result() -> None:
+def fetch_pack_result() -> MagicMock:
     mock_fetch_pack_result = MagicMock(spec=FetchPackResult)
     mock_fetch_pack_result.refs = {
         b"refs/heads/main": b"abc123",
@@ -93,18 +93,18 @@ def test_annotated_tag(tag: str | bytes) -> None:
     assert tag == b"my-tag^{}"
 
 
-def test_get_remote_url(git_mock) -> None:
+def test_get_remote_url(git_mock: Repo) -> None:
     repo = git_mock
 
     assert Git.get_remote_url(repo) == "https://github.com/python-poetry/poetry.git"
 
 
-def test_get_revision(git_mock) -> None:
+def test_get_revision(git_mock: Repo) -> None:
     repo = git_mock
     assert Git.get_revision(repo) == MOCK_DEFAULT_GIT_REVISION
 
 
-def test_info(git_mock) -> None:
+def test_info(git_mock: Repo) -> None:
     repo = git_mock
     info = Git.info(repo)
 
@@ -127,7 +127,7 @@ def test_urlpathjoin(url: str, expected_result: str) -> None:
     assert result == expected_result
 
 
-def test_resolve():
+def test_resolve() -> None:
     git_ref = GitRefSpec("main", "1234", "v2")
 
     assert git_ref.branch == "main"
@@ -136,7 +136,7 @@ def test_resolve():
     assert git_ref.ref == b"HEAD"
 
 
-def test_git_ref_spec_resolve_branch(fetch_pack_result) -> None:
+def test_git_ref_spec_resolve_branch(fetch_pack_result: FetchPackResult) -> None:
     mock_fetch_pack_result = fetch_pack_result
 
     refspec = GitRefSpec(branch="main")
@@ -148,7 +148,7 @@ def test_git_ref_spec_resolve_branch(fetch_pack_result) -> None:
     assert refspec.tag is None
 
 
-def test_git_ref_spec_resolve_tag(fetch_pack_result) -> None:
+def test_git_ref_spec_resolve_tag(fetch_pack_result: FetchPackResult) -> None:
     mock_fetch_pack_result = fetch_pack_result
 
     refspec = GitRefSpec(revision="v1.0.0")
@@ -160,7 +160,7 @@ def test_git_ref_spec_resolve_tag(fetch_pack_result) -> None:
     assert refspec.tag == "v1.0.0"
 
 
-def test_git_ref_spec_resolve_sha(fetch_pack_result) -> None:
+def test_git_ref_spec_resolve_sha(fetch_pack_result: FetchPackResult) -> None:
     mock_fetch_pack_result = fetch_pack_result
 
     refspec = GitRefSpec(revision="abc")
