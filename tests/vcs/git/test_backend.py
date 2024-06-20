@@ -5,11 +5,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from dulwich.client import FetchPackResult
 from dulwich.repo import Repo
 from tests.helpers import MOCK_DEFAULT_GIT_REVISION
 
 from poetry.packages.direct_origin import _get_package_from_git
 from poetry.vcs.git.backend import Git
+from poetry.vcs.git.backend import GitRefSpec
 from poetry.vcs.git.backend import annotated_tag
 from poetry.vcs.git.backend import is_revision_sha
 from poetry.vcs.git.backend import urlpathjoin
@@ -35,6 +37,20 @@ def git_mock(mocker: MockerFixture) -> None:
     _get_package_from_git.cache_clear()
 
     return repo
+
+
+@pytest.fixture()
+def fetch_pack_result() -> None:
+    mock_fetch_pack_result = MagicMock(spec=FetchPackResult)
+    mock_fetch_pack_result.refs = {
+        b"refs/heads/main": b"abc123",
+        b"refs/tags/v1.0.0": b"def456",
+        annotated_tag(b"refs/tags/v1.0.0"): b"def456",
+        b"HEAD": b"abc123",
+    }
+    mock_fetch_pack_result.symrefs = {b"HEAD": b"refs/heads/main"}
+
+    return mock_fetch_pack_result
 
 
 def test_invalid_revision_sha() -> None:
@@ -109,3 +125,49 @@ def test_urlpathjoin(url: str, expected_result: str) -> None:
     path = "../other-repo"
     result = urlpathjoin(url, path)
     assert result == expected_result
+
+
+def test_resolve():
+    git_ref = GitRefSpec("main", "1234", "v2")
+
+    assert git_ref.branch == "main"
+    assert git_ref.revision == "1234"
+    assert git_ref.tag == "v2"
+    assert git_ref.ref == b"HEAD"
+
+
+def test_git_ref_spec_resolve_branch(fetch_pack_result) -> None:
+    mock_fetch_pack_result = fetch_pack_result
+
+    refspec = GitRefSpec(branch="main")
+    refspec.resolve(mock_fetch_pack_result)
+
+    assert refspec.ref == b"refs/heads/main"
+    assert refspec.branch == "main"
+    assert refspec.revision is None
+    assert refspec.tag is None
+
+
+def test_git_ref_spec_resolve_tag(fetch_pack_result) -> None:
+    mock_fetch_pack_result = fetch_pack_result
+
+    refspec = GitRefSpec(revision="v1.0.0")
+    refspec.resolve(mock_fetch_pack_result)
+
+    assert refspec.ref == annotated_tag(b"refs/tags/v1.0.0")
+    assert refspec.branch is None
+    assert refspec.revision is None
+    assert refspec.tag == "v1.0.0"
+
+
+def test_git_ref_spec_resolve_sha(fetch_pack_result) -> None:
+    mock_fetch_pack_result = fetch_pack_result
+
+    refspec = GitRefSpec(revision="abc")
+
+    refspec.resolve(mock_fetch_pack_result)
+
+    assert refspec.ref == b"refs/heads/main"
+    assert refspec.branch is None
+    assert refspec.tag is None
+    assert refspec.revision == "abc"
