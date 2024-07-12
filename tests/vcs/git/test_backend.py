@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
@@ -19,12 +18,9 @@ from poetry.vcs.git.backend import urlpathjoin
 
 VALID_SHA = "c5c7624ef64f34d9f50c3b7e8118f7f652fddbbd"
 
-if TYPE_CHECKING:
-    from pytest_mock import MockerFixture
-
 
 @pytest.fixture(autouse=True)
-def git_mock(mocker: MockerFixture) -> Repo:
+def git_mock() -> Repo:
     repo = MagicMock(spec=Repo)
 
     repo.get_config.return_value.get.return_value = (
@@ -100,8 +96,7 @@ def test_get_remote_url(git_mock: Repo) -> None:
 
 
 def test_get_revision(git_mock: Repo) -> None:
-    repo = git_mock
-    assert Git.get_revision(repo) == MOCK_DEFAULT_GIT_REVISION
+    assert Git.get_revision(git_mock) == MOCK_DEFAULT_GIT_REVISION
 
 
 def test_info(git_mock: Repo) -> None:
@@ -127,7 +122,7 @@ def test_urlpathjoin(url: str, expected_result: str) -> None:
     assert result == expected_result
 
 
-def test_resolve() -> None:
+def test_git_refspec() -> None:
     git_ref = GitRefSpec("main", "1234", "v2")
 
     assert git_ref.branch == "main"
@@ -136,38 +131,43 @@ def test_resolve() -> None:
     assert git_ref.ref == b"HEAD"
 
 
-def test_git_ref_spec_resolve_branch(fetch_pack_result: FetchPackResult) -> None:
-    mock_fetch_pack_result = fetch_pack_result
+@pytest.mark.parametrize(
+    "refspec_params, expected_ref, expected_branch, expected_revision, expected_tag",
+    [
+        ({"branch": "main"}, b"refs/heads/main", "main", None, None),
+        (
+            {"revision": "v1.0.0"},
+            annotated_tag(b"refs/tags/v1.0.0"),
+            None,
+            None,
+            "v1.0.0",
+        ),
+        ({"revision": "abc"}, b"refs/heads/main", None, "abc", None),
+    ],
+)
+def test_git_ref_spec_resolve(
+    fetch_pack_result: FetchPackResult,
+    refspec_params: dict,
+    expected_ref: bytes,
+    expected_branch: str,
+    expected_revision: str,
+    expected_tag: str,
+) -> None:
+    """
+    Parameterized test for GitRefSpec resolve with different parameters.
 
-    refspec = GitRefSpec(branch="main")
-    refspec.resolve(mock_fetch_pack_result)
+    Args:
+        fetch_pack_result (FetchPackResult): The mocked FetchPackResult object.
+        refspec_params (dict): Parameters for creating GitRefSpec.
+        expected_ref (bytes): The expected resolved ref.
+        expected_branch (str): The expected resolved branch.
+        expected_revision (str): The expected resolved revision.
+        expected_tag (str): The expected resolved tag.
+    """
+    refspec = GitRefSpec(**refspec_params)
+    refspec.resolve(fetch_pack_result)
 
-    assert refspec.ref == b"refs/heads/main"
-    assert refspec.branch == "main"
-    assert refspec.revision is None
-    assert refspec.tag is None
-
-
-def test_git_ref_spec_resolve_tag(fetch_pack_result: FetchPackResult) -> None:
-    mock_fetch_pack_result = fetch_pack_result
-
-    refspec = GitRefSpec(revision="v1.0.0")
-    refspec.resolve(mock_fetch_pack_result)
-
-    assert refspec.ref == annotated_tag(b"refs/tags/v1.0.0")
-    assert refspec.branch is None
-    assert refspec.revision is None
-    assert refspec.tag == "v1.0.0"
-
-
-def test_git_ref_spec_resolve_sha(fetch_pack_result: FetchPackResult) -> None:
-    mock_fetch_pack_result = fetch_pack_result
-
-    refspec = GitRefSpec(revision="abc")
-
-    refspec.resolve(mock_fetch_pack_result)
-
-    assert refspec.ref == b"refs/heads/main"
-    assert refspec.branch is None
-    assert refspec.tag is None
-    assert refspec.revision == "abc"
+    assert refspec.ref == expected_ref
+    assert refspec.branch == expected_branch
+    assert refspec.revision == expected_revision
+    assert refspec.tag == expected_tag
