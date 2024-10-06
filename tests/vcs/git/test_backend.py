@@ -147,7 +147,7 @@ def test_git_refspec() -> None:
 )
 def test_git_ref_spec_resolve(
     fetch_pack_result: FetchPackResult,
-    refspec_params: dict,
+    refspec_params: dict[str, str | bytes | None],
     expected_ref: bytes,
     expected_branch: str,
     expected_revision: str,
